@@ -1,0 +1,63 @@
+trigger:
+- <branch-name>
+
+parameters:
+  - name: ResourceGroupName
+    type: string 
+    displayName: Enter Resource Group Name
+  
+  - name: Location
+    type: string
+    displayName: Enter Location
+
+
+stages:
+  - stage: Resource-Group
+    pool: <your-agent-pool>
+    jobs:
+      - job: CreateResourceGroup
+        steps:
+          - task: AzurePowerShell@5
+            inputs:
+              azureSubscription: '<azure-service-connection'
+              ScriptType: 'FilePath'
+              ScriptPath: '$(System.DefaultWorkingDirectory)/BuildAgentAutomate/CreateResourceGroup.ps1'
+              azurePowerShellVersion: LatestVersion
+              ScriptArguments: 
+                -ResourceGroupName ${{ parameters.ResourceGroupName }}
+                -Location '${{ parameters.Location }}'
+          - task: CopyFiles@2
+            inputs:
+              SourceFolder: '$(System.DefaultWorkingDirectory)/BuildAgentAutomate/ARM'
+              Contents: '**'
+              TargetFolder: '$(build.artifactstagingdirectory)'
+          
+          - task: PublishBuildArtifacts@1
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+              ArtifactName: 'drop/ARM'
+              publishLocation: 'Container'
+
+
+
+  - stage: ARM_Deployment
+    pool: BigES-ER
+    variables:
+    - group: <your-varibale-group>
+    jobs:
+      - job: ADOAgentTagging
+        steps:
+          - task: AzureResourceManagerTemplateDeployment@3
+            inputs:
+              deploymentScope: 'Resource Group'
+              azureResourceManagerConnection: '<your-service-connection'
+              subscriptionId: '<your-subscriptionId>'
+              action: 'Create Or Update Resource Group'
+              templateLocation: 'Linked artifact'
+              csmFile: '**\azuredeploy.json'
+              csmParametersFile: '**\azuredeploy.parameters.json'
+              resourceGroupName: ${{ parameters.ResourceGroupName }}
+              location: '${{ parameters.Location }}'
+              deploymentMode: 'Incremental'
+            
+            
