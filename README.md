@@ -33,7 +33,7 @@ To implement infrastructure as code for your Azure solutions, use Azure Resource
 
 ## Deploy ARM Template
 
-- To deploy to a resource group, use az deployment group create:
+- Deploy vnet with one Subnet
 ```
 az deployment group create --resource-group vnetparz --template-file vnet.json --parameters vnetName=vborgsat1 vnetAddressPrefix=10.0 subnetname=sborgnet1 Env=dev
 ```
@@ -44,4 +44,8 @@ az deployment group create --mode Complete --resource-group vnetparz --template-
 - Delete Resource Group 
 ```
 az group delete -g vnetparz
+```
+- Deploy Keyvault
+```
+az deployment group create --resource-group kvparz --template-file keyvault.json --parameters keyvaultName=kvborg vaultSku=Standard environment=dev
 ```
