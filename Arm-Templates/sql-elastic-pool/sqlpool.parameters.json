@@ -1,0 +1,42 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "serverAdminLogin": {
+            "value": "$(sqlserverAdminLogin)"
+        },
+        "serverAdminPassword": {
+            "value": "$(sqlServerPassword)"
+        },
+        "sqlServerName": {
+            "value": "$(sqlserverName)"
+        },
+        "elasticPoolName": {
+            "value": "$(elasticPoolName)"
+        },
+        "edition": {
+            "value": "Standard"
+        },
+        "elasticPoolDTU": {
+            "value": 50
+        },
+        "elasticPoolDTUMin": {
+            "value": 0
+        },
+        "elasticPoolDTUMax": {
+            "value": 50
+        },
+        "sqlDatabaseName": {
+            "value": "$(databaseName)"
+        },
+        "databaseCollation": {
+            "value": "SQL_Latin1_General_CP1_CI_AS"
+        },
+        "sqlstorageAccountName": {
+            "value": "$(storageAccountName)"
+        },
+        "capacity": {
+			"value": 100
+		},
+    }
+}

@@ -1,0 +1,224 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "serverAdminLogin": {
+            "type": "string",
+            "metadata": {
+                "descrition": "SQL Server Admin username"
+            }
+        },
+        "serverAdminPassword": {
+            "type": "securestring",
+            "metadata": {
+                "descrition": "SQL Server Admin Password"
+            }
+        },
+        "sqlServerName": {
+            "type": "string",
+            "metadata": {
+                "descrition": "SQL Server Name"
+            }
+        },
+        "elasticPoolName": {
+            "type": "string",
+            "metadata": {
+                "descrition": "The elastic Pool Name"
+            }
+        },
+        "edition": {
+            "type": "string",
+            "defaultValue": "Standard",
+            "metadata": {
+                "descrition": "The elastic Pool Edition"
+            }
+        },
+        "elasticPoolDTU": {
+            "type": "int",
+            "metadata": {
+                "descrition": "The elastic Pool DTU"
+            }
+        },
+        "elasticPoolDTUMin": {
+            "type": "int",
+            "defaultValue": 0,
+            "metadata": {
+                "descrition": "Elastic Pool Min DTU"
+            }
+        },
+        "elasticPoolDTUMax": {
+            "type": "int",
+            "metadata": {
+                "descrition": "Elastic Pool Min DTU"
+            }
+        },
+        "sqlDatabaseName": {
+            "type": "string",
+            "metadata": {
+                "descrition": "Name of DataBase"
+            }
+        },
+        "databaseCollation": {
+            "type": "string",
+            "defaultValue": "SQL_Latin1_General_CP1_CI_AS",
+            "metadata": {
+                "descrition": "Database collation"
+            }
+        },
+        "sqlstorageAccountName": {
+            "type": "string",
+            "metadata": {
+                "descrition": "Elastic Pool Min DTU"
+            }
+        },
+        "capacity": {
+            "type": "int",
+            "metadata": {
+                "description": "capacity pool"
+            }
+        },
+        "tags": {
+            "type": "object",
+            "defaultValue": {
+                "Environment": "$(environment)",
+                "Purpose": "SQL Pool"
+
+            }
+        }
+    },
+    "functions": [],
+    "variables": {
+        "editionToSkuMap": {
+            "Basic": {
+                "name": "BasicPool",
+                "tier": "Basic"
+            },
+            "Standard": {
+                "name": "StandardPool",
+                "tier": "Standard"
+            },
+            "Premium": {
+                "name": "PremiumPool",
+                "tier": "Premium"
+            },
+            "GP_Gen5": {
+                "family": "Gen5",
+                "name": "GP_Gen5",
+                "tier": "GeneralPurpose"
+            },
+            "BC_Gen5": {
+                "family": "Gen5",
+                "name": "BC_Gen5",
+                "tier": "BusinessCritical"
+            }
+        },
+        "apiVersion": "2018-11-01",
+        "skuName": "[variables('editionToSkuMap')[parameters('edition')].name]",
+        "skuTier": "[variables('editionToSkuMap')[parameters('edition')].tier]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "[variables('apiVersion')]",
+            "name": "[parameters('sqlstorageAccountName')]",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [],
+            "tags": "[parameters('tags')]",
+            "sku": {
+                "name": "Standard_LRS"
+            },
+            "kind": "StorageV2",
+            "properties": {
+                "encryption": {
+                    "services": {
+                        "blob": {
+                            "enabled": true
+                        },
+                        "file": {
+                            "enabled": true
+                        }
+                    },
+                    "keySource": "Microsoft.Storage"
+                },
+                "supportsHttpsTrafficOnly": true
+            }
+        },
+        {
+            "name": "[parameters('sqlServerName')]",
+            "type": "Microsoft.Sql/servers",
+            "apiVersion": "2021-11-01-preview",
+            "location": "[resourceGroup().location]",
+            "tags": "[parameters('tags')]",
+            "properties": {
+                "administratorLogin": "[parameters('serverAdminLogin')]",
+                "administratorLoginPassword": "[parameters('serverAdminPassword')]"
+            },
+            "resources": [
+                {
+                    "type": "firewallRules",
+                    "apiVersion": "[variables('apiVersion')]",
+                    "dependsOn": [
+                        "[parameters('sqlServerName')]"
+                    ],
+                    "location": "[resourceGroup().location]",
+                    "name": "AllowAllWindowsAzureIps",
+                    "properties": {
+                        "startIpAddress": "0.0.0.0",
+                        "endIpAddress": "0.0.0.0"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "Microsoft.Sql/servers/elasticPools",
+            "apiVersion": "2020-08-01-preview",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers/', parameters('sqlServerName'))]"
+            ],
+            "location": "[resourceGroup().location]",
+            "name": "[concat(parameters('sqlServerName'), '/', parameters('elasticPoolName'))]",
+            "sku": {
+                "name": "[variables('skuName')]",
+                "tier": "[variables('skuTier')]",
+                "capacity": "[parameters('capacity')]"
+            },
+            "properties": {
+                "perDatabaseSettings": {
+                    "minCapacity": "[parameters('elasticPoolDTUMin')]",
+                    "maxCapacity": "[parameters('elasticPoolDTUMax')]"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases",
+            "name": "[concat(parameters('sqlServerName'), '/', parameters('sqlDatabaseName'))]",
+            "location": "[resourceGroup().location]",
+            "apiVersion": "2021-11-01-preview",
+            "dependsOn": [
+                "[concat('Microsoft.Sql/servers/', parameters('sqlServerName'))]",
+                "[concat('Microsoft.Sql/servers/', parameters('sqlServerName') ,'/elasticpools/', parameters('elasticPoolName'))]"
+            ],
+            "sku": {
+                "name": "ElasticPool",
+                "tier": "Standard"
+            },
+            "kind": "v12.0,user,pool",
+            "properties": {
+                "collation": "[parameters('databaseCollation')]",
+                "requestedServiceObjectiveName": "S0",
+                "maxSizeBytes": 1073741824,
+                "elasticPoolId": "[resourceId('Microsoft.Sql/servers/elasticPools', parameters('sqlServerName'), parameters('elasticPoolName'))]",
+                "catalogCollation": "[parameters('databaseCollation')]",
+                "zoneRedundant": false
+            }
+        }
+    ],
+    "outputs": {
+
+        "sqlSvrFqdn": {
+            "type": "string",
+            "value": "[reference(concat('Microsoft.Sql/servers/', parameters('sqlServerName'))).fullyQualifiedDomainName]"
+        }
+
+    }
+}

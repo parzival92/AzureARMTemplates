@@ -1,0 +1,78 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "keyvaultName":{
+            "type":"string",
+            "defaultValue":"$(keyVaultName)",
+            "metadata":{
+                "description":"Name of Key Vault"
+            }
+        },
+        "vaultSku": {
+            "type": "string",
+            "defaultValue":"Standard",
+            "allowedValues":[
+                "Standard",
+                "Premium"
+            ],
+            "metadata": {
+                "description": "SKU for the Vault"
+            }
+        },
+        "environment": {
+            "type": "string",
+            "metadata": {
+                "description": "Environment"
+            }
+        },
+        "enabledForDeployment": {
+            "type": "bool",
+            "defaultValue":true,
+            "metadata": {
+                "description": "Specifies if the vault is enabled for VM or Service Fabric deployment"
+            }
+        },
+        "enabledForTemplateDeployment": {
+            "type": "bool",
+            "defaultValue":true,
+            "metadata": {
+                "description": "Specifies if key vault is enabled for arm deployment"
+            }
+        },
+        "enabledForDiskEncryption":{
+            "type": "bool",
+            "defaultValue": true,
+            "metadata":{
+                "description":"Specifies if vault is enabled for volume encryption"
+            }
+        }
+    },
+    "functions": [],
+    "variables": {
+        "apiVersion":"2019-09-01"
+    },
+    "resources": [
+        {
+            "name": "[parameters('keyVaultname')]",
+            "type": "Microsoft.KeyVault/vaults",
+            "apiVersion": "[variables('apiVersion')]",
+            "location": "[resourceGroup().location]",
+            "tags": {
+                "Environment": "[parameters('environment')]"
+            },
+            "properties": {
+                "enabledForDeployment": "[parameters('enabledForDeployment')]",
+                "enabledForTemplateDeployment": "[parameters('enabledForTemplateDeployment')]",
+                "enabledForDiskEncryption": "[parameters('enabledForDiskEncryption')]",
+                "tenantId": "[subscription().tenantId]",
+                "accessPolicies": [],
+                "sku": {
+                    "name": "[parameters('vaultSku')]",
+                    "family": "A"
+                }
+            }
+        }
+    ],
+    "outputs": {}
+}
